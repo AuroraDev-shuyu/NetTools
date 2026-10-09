@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FormDataProcessor</class>
+ <widget class="QWidget" name="FormDataProcessor">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>567</width>
+    <height>438</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QTabWidget" name="tabWidget_DataConversion">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>567</width>
+     <height>438</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="FormChildDataConversion" name="tab_DataConversion">
+    <attribute name="title">
+     <string>数据转换</string>
+    </attribute>
+   </widget>
+   <widget class="FormChildDataValidation" name="tab_DataValidation">
+    <attribute name="title">
+     <string>数据校验</string>
+    </attribute>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FormChildDataConversion</class>
+   <extends>QWidget</extends>
+   <header location="global">formchilddataconversion.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormChildDataValidation</class>
+   <extends>QWidget</extends>
+   <header location="global">formchilddatavalidation.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

@@ -1,0 +1,7 @@
+#Qt
+build/
+*.pro.user
+*.pro.user.*
+.qtcreator/
+*.autosave
+*.log
