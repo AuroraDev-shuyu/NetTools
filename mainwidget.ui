@@ -22,12 +22,12 @@
     <rect>
      <x>0</x>
      <y>10</y>
-     <width>530</width>
+     <width>881</width>
      <height>450</height>
     </rect>
    </property>
    <property name="currentIndex">
-    <number>4</number>
+    <number>9</number>
    </property>
    <widget class="FormTcpServer" name="tab_TCPServer">
     <attribute name="icon">
@@ -74,6 +74,69 @@
      <string>数据转换工具</string>
     </attribute>
    </widget>
+   <widget class="FormHttpServer" name="tab_HTTPServer">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/udpserver.ico</normaloff>:/new/prefix1/images/udpserver.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>HTTP服务器</string>
+    </attribute>
+   </widget>
+   <widget class="FormHttpClient" name="tab_HTTPClient">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>HTTP客户端</string>
+    </attribute>
+   </widget>
+   <widget class="FormMqttServer" name="tab_MQTTServer">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/udpserver.ico</normaloff>:/new/prefix1/images/udpserver.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>MQTT服务器</string>
+    </attribute>
+   </widget>
+   <widget class="FormMqttClient" name="tab_MQTTClient">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>MQTT客户端</string>
+    </attribute>
+   </widget>
+   <widget class="FormPop3Client" name="tab_POP3Client">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/udpserver.ico</normaloff>:/new/prefix1/images/udpserver.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>QUIC服务器</string>
+    </attribute>
+   </widget>
+   <widget class="FormQuicServer" name="tab_QUICServer">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>QUIC客户端</string>
+    </attribute>
+   </widget>
+   <widget class="FormQuicClient" name="tab_QUICClient">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>POP3客户端</string>
+    </attribute>
+   </widget>
   </widget>
  </widget>
  <customwidgets>
@@ -105,6 +168,48 @@
    <class>FormDataProcessor</class>
    <extends>QWidget</extends>
    <header location="global">formdataprocessor.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormHttpServer</class>
+   <extends>QWidget</extends>
+   <header location="global">formhttpserver.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormHttpClient</class>
+   <extends>QWidget</extends>
+   <header location="global">formhttpclient.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormMqttServer</class>
+   <extends>QWidget</extends>
+   <header location="global">formmqttserver.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormMqttClient</class>
+   <extends>QWidget</extends>
+   <header location="global">formmqttclient.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormQuicServer</class>
+   <extends>QWidget</extends>
+   <header location="global">formquicserver.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormQuicClient</class>
+   <extends>QWidget</extends>
+   <header location="global">formquicclient.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormPop3Client</class>
+   <extends>QWidget</extends>
+   <header location="global">formpop3client.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

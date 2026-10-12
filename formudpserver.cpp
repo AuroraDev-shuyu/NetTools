@@ -7,6 +7,10 @@ FormUdpServer::FormUdpServer(QWidget *parent)
     , ui(new Ui::FormUdpServer)
 {
     ui->setupUi(this);
+
+    // 布局微调：输入列占满剩余宽度，消息编辑器吸收多余高度
+    ui->gridLayout_3->setColumnStretch(1, 1);
+    ui->gridLayout_3->setRowStretch(4, 1);
     ui->comboBox_UDPServerIP->setEditable(true);
     QList<QHostAddress> addressList = QNetworkInterface::allAddresses();
     QStringList ipList;
@@ -42,94 +46,92 @@ FormUdpServer::FormUdpServer(QWidget *parent)
     // 建立信号槽连接：将UDP套接字readyRead信号连接到数据读取槽函数
     connect(udpServerSocket, &QUdpSocket::readyRead,
             this, &FormUdpServer::udpSeverReadPendingDatagrams);
-    // 设置控件尺寸策略为固定大小
-    ui->groupBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->groupBox_2->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->listWidget_UDPServerListMsg->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->label_2->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->comboBox_UDPServerIP->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->spinBox_UDPServerPort->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->pushButton_UDPServerClose->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->pushButton_UDPServerStart->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    if (ui->plainTextEdit_UDPServerSendData) {
-        ui->plainTextEdit_UDPServerSendData->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    }
-    if (ui->pushButton_UDPServerSendMsg) {
-        ui->pushButton_UDPServerSendMsg->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    }
-    // 设置界面样式：使用Qt样式表（QSS）美化界面，定义控件的视觉效果
+    // 布局化UI由网格布局管理控件尺寸，不再固定控件大小
+    // 设置界面样式：浅色精致主题（与MQTT/HTTP模块一致）
     setStyleSheet(
         "QWidget {"
-        "  background-color: #F3F4F6;"      // 浅灰色背景（RGB: 243, 244, 246）
-        "  color: #1F2933;"                 // 深灰色文字（RGB: 31, 41, 51）
+        "  background-color: #EEF1F6;"
+        "  color: #1F2933;"
         "}"
         "QGroupBox {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  background-color: #FFFFFF;"      // 白色背景
-        "  border: 1px solid #D0D7E2;"      // 浅灰色边框，1 像素实线
-        "  border-radius: 6px;"             // 圆角半径 6 像素
-        "  margin-top: 10px;"               // 上边距 10 像素
+        "  font-size: 13px;"
+        "  font-weight: bold;"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #DCE2EC;"
+        "  border-radius: 8px;"
+        "  margin-top: 12px;"
         "}"
         "QGroupBox::title {"
-        "  subcontrol-origin: margin;"      // 标题位置基于边距
-        "  left: 10px;"                     // 距离左边 10 像素
-        "  padding: 0 4px;"                 // 内边距：上下 0，左右 4 像素
-        "  background-color: #F3F4F6;"      // 浅灰色背景（与窗口背景一致）
-        "  color: #111827;"                 // 深灰色文字
+        "  subcontrol-origin: margin;"
+        "  left: 12px;"
+        "  padding: 0 6px;"
+        "  background-color: #EEF1F6;"
+        "  color: #334155;"
         "}"
         "QLabel {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  color: #374151;"                 // 中灰色文字（RGB: 55, 65, 81）
-        "  background-color: transparent;"  // 透明背景
+        "  font-size: 13px;"
+        "  color: #475569;"
+        "  background-color: transparent;"
         "}"
         "QComboBox, QSpinBox {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  background-color: #FFFFFF;"      // 白色背景
-        "  border: 1px solid #D0D7E2;"      // 浅灰色边框
-        "  border-radius: 4px;"             // 圆角半径 4 像素
-        "  padding: 2px 6px;"                // 内边距：上下 2 像素，左右 6 像素
+        "  font-size: 13px;"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px 8px;"
+        "  min-height: 20px;"
         "}"
-        // 文本编辑框样式：设置多行文本编辑框（QPlainTextEdit）的样式
-        "QPlainTextEdit {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  background-color: #FFFFFF;"      // 白色背景
-        "  border: 1px solid #D0D7E2;"      // 浅灰色边框
-        "  border-radius: 4px;"             // 圆角半径 4 像素
+        "QComboBox:hover, QSpinBox:hover {"
+        "  border-color: #94A3B8;"
         "}"
-        // 按钮基础样式：设置按钮（QPushButton）的默认样式
+        "QComboBox:focus, QSpinBox:focus {"
+        "  border-color: #3B82F6;"
+        "}"
+        "QListWidget#listWidget_UDPServerListMsg {"
+        "  font-size: 12px;"
+        "  font-family: Consolas, 'Microsoft YaHei UI';"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #E2E8F0;"
+        "  border-radius: 6px;"
+        "}"
+        "QPlainTextEdit#plainTextEdit_UDPServerSendData {"
+        "  font-size: 13px;"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px;"
+        "}"
         "QPushButton {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  background-color: #2563EB;"      // 蓝色背景（RGB: 37, 99, 235）
-        "  color: #FFFFFF;"                 // 白色文字
-        "  border-radius: 4px;"             // 圆角半径 4 像素
-        "  padding: 4px 12px;"               // 内边距：上下 4 像素，左右 12 像素
-        "  border: none;"                    // 无边框
+        "  font-size: 13px;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  padding: 5px 12px;"
         "}"
-        // 按钮悬停样式：鼠标悬停在按钮上时的样式
-        "QPushButton:hover {"
-        "  background-color: #1D4ED8;"      // 深蓝色背景（悬停效果）
+        "QPushButton#pushButton_UDPServerStart {"
+        "  background-color: #10B981;"
+        "  color: #FFFFFF;"
         "}"
-        // 按钮按下样式：鼠标按下按钮时的样式
-        "QPushButton:pressed {"
-        "  background-color: #1E40AF;"      // 更深蓝色背景（按下效果）
+        "QPushButton#pushButton_UDPServerStart:hover {"
+        "  background-color: #059669;"
         "}"
-        // 按钮禁用样式：按钮被禁用时的样式
+        "QPushButton#pushButton_UDPServerSendMsg {"
+        "  background-color: #2563EB;"
+        "  color: #FFFFFF;"
+        "}"
+        "QPushButton#pushButton_UDPServerSendMsg:hover {"
+        "  background-color: #1D4ED8;"
+        "}"
+        "QPushButton#pushButton_UDPServerClose {"
+        "  background-color: #F1F5F9;"
+        "  color: #475569;"
+        "  border: 1px solid #CBD5E1;"
+        "}"
+        "QPushButton#pushButton_UDPServerClose:hover {"
+        "  background-color: #E2E8F0;"
+        "}"
         "QPushButton:disabled {"
-        "  background-color: #CBD5F5;"      // 浅蓝色背景（禁用状态）
-        "  color: #6B7280;"                 // 灰色文字（禁用状态）
-        "}"
-        // 列表控件样式：设置列表控件（QListWidget）的样式
-        "QListWidget {"
-        "  font-size: 14px;"                // 字体大小 14 像素
-        "  background-color: #FFFFFF;"      // 白色背景
-        "  border: 1px solid #D0D7E2;"      // 浅灰色边框
-        "  border-radius: 4px;"             // 圆角半径 4 像素
-        "}"
-        // 列表项选中样式：设置列表项被选中时的样式
-        "QListWidget::item:selected {"
-        "  background-color: #FEE2E2;"      // 浅红色背景（选中高亮）
+        "  background-color: #E2E8F0;"
+        "  color: #94A3B8;"
         "}"
         );
 

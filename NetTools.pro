@@ -4,6 +4,8 @@ QT += widgets
 QT += network
 QT += concurrent
 
+QT +=core gui widgets network httpserver
+
 greaterThan(QT_MAJOR_VERSION,4): QT += widgets
 
 CONFIG += c++17
@@ -18,6 +20,13 @@ SOURCES += \
     formchilddataconversion.cpp \
     formchilddatavalidation.cpp \
     formdataprocessor.cpp \
+    formhttpclient.cpp \
+    formhttpserver.cpp \
+    formmqttclient.cpp \
+    formmqttserver.cpp \
+    formpop3client.cpp \
+    formquicclient.cpp \
+    formquicserver.cpp \
     formtcpclient.cpp \
     formtcpserver.cpp \
     formudpclient.cpp \
@@ -25,27 +34,43 @@ SOURCES += \
     inputvalidator.cpp \
     main.cpp \
     mainwidget.cpp \
+    mqttprotocol.cpp \
     network.cpp
 
 HEADERS += \
     dataconverter.h \
     errorhandler.h \
     formchilddataconversion.h \
-    c \
+    formchilddataconversion.h \
     formchilddatavalidation.h \
     formdataprocessor.h \
+    formhttpclient.h \
+    formhttpserver.h \
+    formmqttclient.h \
+    formmqttserver.h \
+    formpop3client.h \
+    formquicclient.h \
+    formquicserver.h \
     formtcpclient.h \
     formtcpserver.h \
     formudpclient.h \
     formudpserver.h \
     inputvalidator.h \
     mainwidget.h \
+    mqttprotocol.h \
     network.h
 
 FORMS += \
     formchilddataconversion.ui \
     formchilddatavalidation.ui \
     formdataprocessor.ui \
+    formhttpclient.ui \
+    formhttpserver.ui \
+    formmqttclient.ui \
+    formmqttserver.ui \
+    formpop3client.ui \
+    formquicclient.ui \
+    formquicserver.ui \
     formtcpclient.ui \
     formtcpserver.ui \
     formudpclient.ui \

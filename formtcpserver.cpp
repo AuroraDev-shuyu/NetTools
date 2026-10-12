@@ -10,6 +10,10 @@ FormTcpServer::FormTcpServer(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // 布局微调：输入列占满剩余宽度，消息编辑器吸收多余高度
+    ui->gridLayout_3->setColumnStretch(1, 1);
+    ui->gridLayout_3->setRowStretch(4, 1);
+
     tcpServer = new QTcpServer(this);                   // 服务器实例，父对象负责回收
     // 监听新连接信号
     connect(tcpServer, &QTcpServer::newConnection, this, &FormTcpServer::TcpServerConnectedFunc);
@@ -71,93 +75,103 @@ FormTcpServer::FormTcpServer(QWidget *parent)
     // DPI设置已在main.cpp中统一配置，此处不再重复设置
 
 
-    // 控件尺寸策略：固定，避免布局抖动
-    ui->groupBox->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->groupBox_2->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->listWidget_TCPServerListMsg->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->label->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->label_2->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    ui->comboBox_TCPServerIP->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->spinBox_TCPServerPort->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->pushButton_TCPServerClose->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->pushButton_TCPServerStop->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    ui->pushButton_TCPServerStart->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-
-    if (ui->plainTextEdit_TCPServerSendData) {
-        ui->plainTextEdit_TCPServerSendData->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    }
-    if (ui->pushButton_TCPServerSendMsg) {
-        ui->pushButton_TCPServerSendMsg->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    }
+    // 布局化UI由网格布局管理控件尺寸，不再固定控件大小
 
 
-    // QSS：统一浅色主题、字号与按钮/列表样式
-    setStyleSheet( // 统一界面样式（浅色系）
+    // QSS：浅色精致主题（与MQTT/HTTP模块一致）
+    setStyleSheet(
         "QWidget {"
-        "  background-color: #F3F4F6;"
+        "  background-color: #EEF1F6;"
         "  color: #1F2933;"
         "}"
         "QGroupBox {"
-        "  font-size: 14px;"
+        "  font-size: 13px;"
+        "  font-weight: bold;"
         "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 6px;"
-        "  margin-top: 10px;"
+        "  border: 1px solid #DCE2EC;"
+        "  border-radius: 8px;"
+        "  margin-top: 12px;"
         "}"
         "QGroupBox::title {"
         "  subcontrol-origin: margin;"
-        "  left: 10px;"
-        "  padding: 0 4px;"
-        "  background-color: #F3F4F6;"
-        "  color: #111827;"
+        "  left: 12px;"
+        "  padding: 0 6px;"
+        "  background-color: #EEF1F6;"
+        "  color: #334155;"
         "}"
         "QLabel {"
-        "  font-size: 14px;"
-        "  color: #374151;"
+        "  font-size: 13px;"
+        "  color: #475569;"
         "  background-color: transparent;"
         "}"
         "QComboBox, QSpinBox {"
-        "  font-size: 14px;"
+        "  font-size: 13px;"
         "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 4px;"
-        "  padding: 2px 6px;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px 8px;"
+        "  min-height: 20px;"
         "}"
-        "QPlainTextEdit {"
-        "  font-size: 14px;"
+        "QComboBox:hover, QSpinBox:hover {"
+        "  border-color: #94A3B8;"
+        "}"
+        "QComboBox:focus, QSpinBox:focus {"
+        "  border-color: #3B82F6;"
+        "}"
+        "QListWidget#listWidget_TCPServerListMsg {"
+        "  font-size: 12px;"
+        "  font-family: Consolas, 'Microsoft YaHei UI';"
         "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 4px;"
+        "  border: 1px solid #E2E8F0;"
+        "  border-radius: 6px;"
+        "}"
+        "QPlainTextEdit#plainTextEdit_TCPServerSendData {"
+        "  font-size: 13px;"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px;"
         "}"
         "QPushButton {"
-        "font-size: 14px;"
-        "background-color: #2563EB;"
-        "color: #FFFFFF;"
-        "border-radius: 4px;"
-        "padding: 4px 12px;"
-        "border: none;"
+        "  font-size: 13px;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  padding: 5px 12px;"
         "}"
-        "QPushButton:hover {"
-        "background-color: #1D4ED8;"
+        "QPushButton#pushButton_TCPServerStart {"
+        "  background-color: #10B981;"
+        "  color: #FFFFFF;"
         "}"
-        "QPushButton:pressed {"
-        "background-color: #1E40AF;"
+        "QPushButton#pushButton_TCPServerStart:hover {"
+        "  background-color: #059669;"
+        "}"
+        "QPushButton#pushButton_TCPServerStop {"
+        "  background-color: #EF4444;"
+        "  color: #FFFFFF;"
+        "}"
+        "QPushButton#pushButton_TCPServerStop:hover {"
+        "  background-color: #DC2626;"
+        "}"
+        "QPushButton#pushButton_TCPServerSendMsg {"
+        "  background-color: #2563EB;"
+        "  color: #FFFFFF;"
+        "}"
+        "QPushButton#pushButton_TCPServerSendMsg:hover {"
+        "  background-color: #1D4ED8;"
+        "}"
+        "QPushButton#pushButton_TCPServerClose {"
+        "  background-color: #F1F5F9;"
+        "  color: #475569;"
+        "  border: 1px solid #CBD5E1;"
+        "}"
+        "QPushButton#pushButton_TCPServerClose:hover {"
+        "  background-color: #E2E8F0;"
         "}"
         "QPushButton:disabled {"
-        "background-color: #CBD5F5;"
-        "color: #6B7280;"
+        "  background-color: #E2E8F0;"
+        "  color: #94A3B8;"
         "}"
-        "QListWidget {"
-        "  font-size: 14px;"
-        "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 4px;"
-        "}"
-        "QListWidget::item:selected {"
-        "  background-color: #FEE2E2;"
-        "}"
-        ); // 结束样式表定义
+        );
 
 }
 

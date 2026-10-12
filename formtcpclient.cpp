@@ -9,6 +9,10 @@ FormTcpClient::FormTcpClient(QWidget *parent)
 {
     ui->setupUi(this);
 
+    // 布局微调：输入列占满剩余宽度，消息编辑器吸收多余高度
+    ui->gridLayout_3->setColumnStretch(1, 1);
+    ui->gridLayout_3->setRowStretch(4, 1);
+
     // 设置IP下拉框为可编辑，允许手动输入IP地址
     ui->comboBox_TCPClientIP->setEditable(true);
 
@@ -20,84 +24,105 @@ FormTcpClient::FormTcpClient(QWidget *parent)
     ui->plainTextEdit_TCPClientSendData->setPlainText("Hello TCP Server.");
 
 
-    ui->groupBox->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->groupBox_2->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-
-    ui->label->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->label_2->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->label_3->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-
-
-    ui->comboBox_TCPClientIP->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->spinBox_TCPClientPort->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->checkBox_TCPClientAutoTesting->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-
-    ui->pushButton_TCPClientConnect->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->pushButton_TCPClientDisconnect->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->pushButton_TCPClientClose->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->pushButton_TCPClientSendMsg->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-
-    ui->plainTextEdit_TCPClientSendData->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    ui->plainTextEdit_TCPClientMsgList->setSizePolicy(QSizePolicy::Fixed,QSizePolicy::Fixed);
-    // 应用统一浅色主题QSS
+    // 布局化UI由网格布局管理控件尺寸，不再固定控件大小
+    // 应用统一浅色主题QSS（与MQTT/HTTP模块一致）
     setStyleSheet(
         "QWidget {"
-        "  background-color: #F3F4F6;"
+        "  background-color: #EEF1F6;"
         "  color: #1F2933;"
         "}"
         "QGroupBox {"
-        "  font-size: 14px;"
+        "  font-size: 13px;"
+        "  font-weight: bold;"
         "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 6px;"
-        "  margin-top: 10px;"
+        "  border: 1px solid #DCE2EC;"
+        "  border-radius: 8px;"
+        "  margin-top: 12px;"
         "}"
         "QGroupBox::title {"
         "  subcontrol-origin: margin;"
-        "  left: 10px;"
-        "  padding: 0 4px;"
-        "  background-color: #F3F4F6;"
-        "  color: #111827;"
+        "  left: 12px;"
+        "  padding: 0 6px;"
+        "  background-color: #EEF1F6;"
+        "  color: #334155;"
         "}"
         "QLabel {"
-        "  font-size: 14px;"
-        "  color: #374151;"
+        "  font-size: 13px;"
+        "  color: #475569;"
         "  background-color: transparent;"
         "}"
-        "QPlainTextEdit {"
-        "  font-size: 14px;"
-        "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 4px;"
-        "}"
         "QComboBox, QSpinBox {"
-        "  font-size: 14px;"
+        "  font-size: 13px;"
         "  background-color: #FFFFFF;"
-        "  border: 1px solid #D0D7E2;"
-        "  border-radius: 4px;"
-        "  padding: 2px 6px;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px 8px;"
+        "  min-height: 20px;"
+        "}"
+        "QComboBox:hover, QSpinBox:hover {"
+        "  border-color: #94A3B8;"
+        "}"
+        "QComboBox:focus, QSpinBox:focus {"
+        "  border-color: #3B82F6;"
+        "}"
+        "QPlainTextEdit#plainTextEdit_TCPClientMsgList {"
+        "  font-size: 12px;"
+        "  font-family: Consolas, 'Microsoft YaHei UI';"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #E2E8F0;"
+        "  border-radius: 6px;"
+        "  padding: 4px;"
+        "}"
+        "QPlainTextEdit#plainTextEdit_TCPClientSendData {"
+        "  font-size: 13px;"
+        "  background-color: #FFFFFF;"
+        "  border: 1px solid #CBD5E1;"
+        "  border-radius: 6px;"
+        "  padding: 4px;"
         "}"
         "QCheckBox {"
-        "  font-size: 14px;"
-        "  color: #374151;"
+        "  font-size: 13px;"
+        "  color: #475569;"
+        "  background-color: transparent;"
         "}"
         "QPushButton {"
-        "font-size: 14px;"
-        "background-color: #2563EB;"
-        "color: #FFFFFF;"
-        "border-radius: 4px;"
-        "padding: 4px 12px;"
-        "border: none;"
+        "  font-size: 13px;"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  padding: 5px 12px;"
         "}"
-        "QPushButton:hover {"
-        "background-color: #1D4ED8;"
+        "QPushButton#pushButton_TCPClientConnect {"
+        "  background-color: #10B981;"
+        "  color: #FFFFFF;"
         "}"
-        "QPushButton:pressed {"
-        "background-color: #1E40AF;"
+        "QPushButton#pushButton_TCPClientConnect:hover {"
+        "  background-color: #059669;"
+        "}"
+        "QPushButton#pushButton_TCPClientDisconnect {"
+        "  background-color: #EF4444;"
+        "  color: #FFFFFF;"
+        "}"
+        "QPushButton#pushButton_TCPClientDisconnect:hover {"
+        "  background-color: #DC2626;"
+        "}"
+        "QPushButton#pushButton_TCPClientSendMsg {"
+        "  background-color: #2563EB;"
+        "  color: #FFFFFF;"
+        "}"
+        "QPushButton#pushButton_TCPClientSendMsg:hover {"
+        "  background-color: #1D4ED8;"
+        "}"
+        "QPushButton#pushButton_TCPClientClose {"
+        "  background-color: #F1F5F9;"
+        "  color: #475569;"
+        "  border: 1px solid #CBD5E1;"
+        "}"
+        "QPushButton#pushButton_TCPClientClose:hover {"
+        "  background-color: #E2E8F0;"
         "}"
         "QPushButton:disabled {"
-        "background-color: #CBD5F5;"
-        "color: #6B7280;"
+        "  background-color: #E2E8F0;"
+        "  color: #94A3B8;"
         "}"
         );
 

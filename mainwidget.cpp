@@ -33,6 +33,26 @@ void MainWidget::closeEvent(QCloseEvent *event)
         ui->tab_UDPClient->saveLog();
     }
 
+    // 保存HTTP服务器日志
+    if(ui->tab_HTTPServer){
+        ui->tab_HTTPServer->saveLog();
+    }
+
+    // 保存HTTP客户端日志
+    if(ui->tab_HTTPClient){
+        ui->tab_HTTPClient->saveLog();
+    }
+
+    // 保存MQTT服务器日志
+    if(ui->tab_MQTTServer){
+        ui->tab_MQTTServer->saveLog();
+    }
+
+    // 保存MQTT客户端日志
+    if(ui->tab_MQTTClient){
+        ui->tab_MQTTClient->saveLog();
+    }
+
     // 保存数据转换工具日志
     if(ui->tab_DataExchange){
         try{
