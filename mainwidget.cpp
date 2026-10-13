@@ -53,6 +53,16 @@ void MainWidget::closeEvent(QCloseEvent *event)
         ui->tab_MQTTClient->saveLog();
     }
 
+    // 保存QUIC服务器日志
+    if(ui->tab_QUICServer){
+        ui->tab_QUICServer->saveLog();
+    }
+
+    // 保存QUIC客户端日志
+    if(ui->tab_QUICClient){
+        ui->tab_QUICClient->saveLog();
+    }
+
     // 保存数据转换工具日志
     if(ui->tab_DataExchange){
         try{

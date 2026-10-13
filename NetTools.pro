@@ -35,7 +35,9 @@ SOURCES += \
     main.cpp \
     mainwidget.cpp \
     mqttprotocol.cpp \
-    network.cpp
+    network.cpp \
+    quicclient.cpp \
+    quicserver.cpp
 
 HEADERS += \
     dataconverter.h \
@@ -58,7 +60,10 @@ HEADERS += \
     inputvalidator.h \
     mainwidget.h \
     mqttprotocol.h \
-    network.h
+    network.h \
+    quiccommon.h \
+    quicclient.h \
+    quicserver.h
 
 FORMS += \
     formchilddataconversion.ui \
@@ -76,6 +81,24 @@ FORMS += \
     formudpclient.ui \
     formudpserver.ui \
     mainwidget.ui
+
+# MsQuic（QUIC模块依赖）：头文件、导入库与运行时DLL
+INCLUDEPATH += $$PWD/third_party/msquic/include
+LIBS += -L$$PWD/third_party/msquic/lib/x64 -lmsquic
+
+# ws2_32：quicserver.cpp 使用 htonl/htons/ntohs 等 Winsock 字节序函数
+LIBS += -lws2_32
+
+# 输出目录按构建类型区分（与Qt Creator阴影构建默认一致），
+# 构建后把 msquic.dll 拷贝到exe同目录
+win32 {
+    CONFIG(debug, debug|release) {
+        DESTDIR = $$OUT_PWD/debug
+    } else {
+        DESTDIR = $$OUT_PWD/release
+    }
+    QMAKE_POST_LINK += $$quote(cmd /c copy /y $$shell_path($$PWD/third_party/msquic/bin/x64/msquic.dll) $$shell_path($$DESTDIR))
+}
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

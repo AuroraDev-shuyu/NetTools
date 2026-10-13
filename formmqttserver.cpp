@@ -18,6 +18,12 @@
 #include "errorhandler.h"
 #include "inputvalidator.h"
 
+#include <QTimer>
+
+// 出站QoS1/QoS2投递的重传参数
+static const int kRetryIntervalMs = 5000;  // 重传间隔
+static const int kMaxRetries = 10;         // 最大重传次数（超出则放弃投递）
+
 // 功能：构造函数，初始化UI、TCP服务器、填充本机IP列表并恢复上次配置
 FormMqttServer::FormMqttServer(QWidget *parent)
     : QWidget(parent)
@@ -40,6 +46,14 @@ FormMqttServer::FormMqttServer(QWidget *parent)
     // MQTT服务器实例，监听新连接信号
     m_tcpServer = new QTcpServer(this);
     connect(m_tcpServer, &QTcpServer::newConnection, this, &FormMqttServer::onNewConnection);
+
+    // 周期定时器（每秒）：出站QoS重传 + 保活超时检测
+    m_retryTimer = new QTimer(this);
+    m_retryTimer->setInterval(1000);
+    connect(m_retryTimer, &QTimer::timeout, this, &FormMqttServer::retryPendingDeliveries);
+    connect(m_retryTimer, &QTimer::timeout, this, &FormMqttServer::checkKeepAliveTimeouts);
+    m_retryTimer->start();
+    m_retryClock.start();
 
     // 枚举本机IPv4，填充下拉框
     QList<QHostAddress> addrList = QNetworkInterface::allAddresses();
@@ -309,7 +323,7 @@ void FormMqttServer::on_pushButton_MQTTServerSendMsg_clicked()
                   .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
                   .arg(topic)
                   .arg(payload.size()));
-    deliverMessage(topic, payload);
+    deliverMessage(topic, payload, 0);
 }
 
 // 功能：关闭窗口——保存日志并退出程序
@@ -376,6 +390,11 @@ void FormMqttServer::parsePackets(QTcpSocket *socket)
 
         handlePacket(socket, typeAndFlags, body);
 
+        // 任意有效报文都刷新客户端活动时间（保活超时判断依据）
+        if (m_clients.contains(socket)) {
+            m_clients[socket].lastActivityMs = m_retryClock.elapsed();
+        }
+
         // 报文处理可能已断开连接，停止继续解析
         if (socket->state() != QAbstractSocket::ConnectedState) {
             buf.clear();
@@ -404,16 +423,37 @@ void FormMqttServer::handlePacket(QTcpSocket *socket, quint8 typeAndFlags, const
     case MqttProtocol::PingReq:
         sendToClient(socket, MqttProtocol::makePingRespPacket());
         break;
-    case MqttProtocol::PubRel: // QoS2流程：释放后直接完成（Broker不存储QoS2消息）
+    case MqttProtocol::PubRel: { // QoS2入站：收到PUBREL后投递暂存消息并回复PUBCOMP
         if (body.size() >= 2) {
             quint16 packetId = (static_cast<quint8>(body.at(0)) << 8) |
                                static_cast<quint8>(body.at(1));
             sendToClient(socket, MqttProtocol::makePubCompPacket(packetId));
+            auto pendingIt = m_qos2Inbound.find(socket);
+            if (pendingIt != m_qos2Inbound.end()) {
+                auto it = pendingIt->find(packetId);
+                if (it != pendingIt->end()) {
+                    appendLog(QString("[%1] QoS2发布完成: %2 (报文标识符%3)")
+                                  .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                                  .arg(it->topic)
+                                  .arg(packetId));
+                    deliverMessage(it->topic, it->payload, 2);
+                    pendingIt->erase(it);
+                }
+            }
         }
+        break;
+    }
+    case MqttProtocol::PubAck:   // QoS1出站：投递完成
+    case MqttProtocol::PubRec:   // QoS2出站：收到PUBREC，回复PUBREL
+    case MqttProtocol::PubComp:  // QoS2出站：投递完成
+        handleOutgoingAck(socket, MqttProtocol::packetType(typeAndFlags), body);
         break;
     case MqttProtocol::Disconnect:
         appendLog(QString("[%1] 客户端主动断开")
                       .arg(QDateTime::currentDateTime().toString("hh:mm:ss")));
+        if (m_clients.contains(socket)) {
+            m_clients[socket].cleanDisconnect = true; // 干净断开：取消遗嘱发布
+        }
         socket->disconnectFromHost();
         break;
     default:
@@ -449,6 +489,13 @@ void FormMqttServer::handleConnect(QTcpSocket *socket, const QByteArray &body)
     bool usernameFlag = (connectFlags & 0x80) != 0;
     bool passwordFlag = (connectFlags & 0x40) != 0;
 
+    // 保留位必须为0；遗嘱QoS=3非法
+    if ((connectFlags & 0x01) != 0 || willQos == 3) {
+        appendLog("[错误] CONNECT连接标志非法，断开连接");
+        socket->disconnectFromHost();
+        return;
+    }
+
     quint16 keepAlive = 0;
     if (pos + 2 <= body.size()) {
         keepAlive = (static_cast<quint8>(body.at(pos)) << 8) |
@@ -463,18 +510,19 @@ void FormMqttServer::handleConnect(QTcpSocket *socket, const QByteArray &body)
         return;
     }
 
-    // 遗嘱消息（Broker不处理遗嘱，仅解析跳过）
+    // 遗嘱配置：存入会话，客户端异常断开时由Broker代为发布
+    MqttProtocol::WillConfig will;
     if (willFlag) {
-        QByteArray willTopic;
-        QByteArray willMessage;
-        if (!MqttProtocol::decodeUtf8String(body, pos, willTopic) ||
-            !MqttProtocol::decodeUtf8String(body, pos, willMessage)) {
+        QByteArray willTopicBytes;
+        if (!MqttProtocol::decodeUtf8String(body, pos, willTopicBytes) ||
+            !MqttProtocol::decodeBinaryData(body, pos, will.message)) {
             appendLog("[错误] CONNECT遗嘱消息格式错误，断开连接");
             socket->disconnectFromHost();
             return;
         }
-        Q_UNUSED(willTopic);
-        Q_UNUSED(willMessage);
+        will.topic = QString::fromUtf8(willTopicBytes);
+        will.qos = willQos;
+        will.retain = willRetain;
     }
 
     QByteArray username;
@@ -500,12 +548,13 @@ void FormMqttServer::handleConnect(QTcpSocket *socket, const QByteArray &body)
                        .arg(QRandomGenerator::global()->bounded(10000, 99999));
     }
 
-    // 相同客户端ID已连接时，按规范断开旧连接
-    for (auto it = m_clients.constBegin(); it != m_clients.constEnd(); ++it) {
+    // 相同客户端ID已连接时，按规范断开旧连接（服务器主动断开，不发布其遗嘱）
+    for (auto it = m_clients.begin(); it != m_clients.end(); ++it) {
         if (it.key() != socket && it.value().clientId == clientId) {
             appendLog(QString("[%1] 客户端ID %2 重复，断开旧连接")
                           .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
                           .arg(clientId));
+            it.value().cleanDisconnect = true;
             it.key()->disconnect(this);
             it.key()->abort();
             removeClient(it.key());
@@ -517,6 +566,10 @@ void FormMqttServer::handleConnect(QTcpSocket *socket, const QByteArray &body)
     MqttClientSession &session = m_clients[socket];
     session.clientId = clientId;
     session.username = QString::fromUtf8(username);
+    session.willFlag = willFlag;
+    session.will = will;
+    session.keepAliveSeconds = keepAlive;
+    session.lastActivityMs = m_retryClock.elapsed();
 
     sendToClient(socket, MqttProtocol::makeConnAckPacket(false, 0x00)); // 连接接受
 
@@ -528,60 +581,61 @@ void FormMqttServer::handleConnect(QTcpSocket *socket, const QByteArray &body)
                       .arg(keepAlive)
                       .arg(cleanSession ? "是" : "否");
     if (willFlag) {
-        log += QString(", 遗嘱QoS=%1, 遗嘱保留=%2").arg(willQos).arg(willRetain ? "是" : "否");
+        log += QString(", 遗嘱: %1 (QoS%2, 保留=%3)")
+                   .arg(will.topic)
+                   .arg(willQos)
+                   .arg(willRetain ? "是" : "否");
     }
     appendLog(log);
 }
 
-// 功能：处理PUBLISH报文——按QoS确认并将消息路由给订阅者
+// 功能：处理PUBLISH报文——retain存储/清除，按QoS确认并将消息路由给订阅者
 void FormMqttServer::handlePublish(QTcpSocket *socket, quint8 flags, const QByteArray &body)
 {
-    int pos = 0;
-    QByteArray topicBytes;
-    if (!MqttProtocol::decodeUtf8String(body, pos, topicBytes)) {
+    const MqttProtocol::PublishInfo pub = MqttProtocol::decodePublishPacket(flags, body);
+    if (!pub.valid) {
         appendLog("[错误] PUBLISH报文格式错误，断开连接");
         socket->disconnectFromHost();
         return;
     }
 
-    quint8 qos = (flags >> 1) & 0x03;
-    bool retain = (flags & 0x01) != 0;
-
-    quint16 packetId = 0;
-    if (qos > 0) {
-        if (pos + 2 > body.size()) {
-            socket->disconnectFromHost();
-            return;
-        }
-        packetId = (static_cast<quint8>(body.at(pos)) << 8) |
-                   static_cast<quint8>(body.at(pos + 1));
-        pos += 2;
-    }
-
-    QByteArray payload = body.mid(pos);
-    QString topic = QString::fromUtf8(topicBytes);
     QString clientId = m_clients.value(socket).clientId;
 
-    appendLog(QString("[%1] 收到发布: %2 -> %3 (QoS%4, %5字节)")
+    appendLog(QString("[%1] 收到发布: %2 -> %3 (QoS%4, %5字节%6)")
                   .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
                   .arg(clientId.isEmpty() ? "未知客户端" : clientId)
-                  .arg(topic)
-                  .arg(qos)
-                  .arg(payload.size()));
-    appendLog(QString::fromUtf8(payload).left(300));
+                  .arg(pub.topic)
+                  .arg(pub.qos)
+                  .arg(pub.payload.size())
+                  .arg(pub.retain ? ", retain" : ""));
+    appendLog(QString::fromUtf8(pub.payload).left(300));
 
-    // QoS1需要回复PUBACK；QoS2回复PUBREC（Broker不存储，仅确认）
-    if (qos == 1) {
-        sendToClient(socket, MqttProtocol::makePubAckPacket(packetId));
-    } else if (qos == 2) {
-        sendToClient(socket, MqttProtocol::makePubRecPacket(packetId));
+    // 保留消息：retain=1时存储，空载荷表示清除该主题的保留消息
+    if (pub.retain) {
+        applyRetainedMessage(pub.topic, pub.payload, pub.qos);
     }
 
-    Q_UNUSED(retain); // 简化实现：不保存保留消息
-    deliverMessage(topic, payload);
+    if (pub.qos == 1) {
+        // QoS1：立即确认并投递（至少一次）
+        sendToClient(socket, MqttProtocol::makePubAckPacket(pub.packetId));
+        deliverMessage(pub.topic, pub.payload, 1);
+    } else if (pub.qos == 2) {
+        // QoS2：PUBREC确认并暂存，收到PUBREL后才投递（恰好一次）；
+        // 重复报文（重传）只重发PUBREC，不重复存储
+        QHash<quint16, MqttPendingQos2> &pending = m_qos2Inbound[socket];
+        if (!pending.contains(pub.packetId)) {
+            MqttPendingQos2 stored;
+            stored.topic = pub.topic;
+            stored.payload = pub.payload;
+            pending.insert(pub.packetId, stored);
+        }
+        sendToClient(socket, MqttProtocol::makePubRecPacket(pub.packetId));
+    } else {
+        deliverMessage(pub.topic, pub.payload, 0);
+    }
 }
 
-// 功能：处理SUBSCRIBE报文——记录订阅并回复SUBACK
+// 功能：处理SUBSCRIBE报文——记录订阅（支持QoS2）、回复SUBACK并下发匹配的保留消息
 void FormMqttServer::handleSubscribe(QTcpSocket *socket, const QByteArray &body)
 {
     if (body.size() < 3) {
@@ -595,6 +649,7 @@ void FormMqttServer::handleSubscribe(QTcpSocket *socket, const QByteArray &body)
 
     QList<quint8> grantedQos;
     QStringList subscribed;
+    QList<QPair<QString, quint8>> newSubscriptions; // (过滤器, 授权QoS)，用于下发保留消息
 
     while (pos < body.size()) {
         QByteArray filterBytes;
@@ -603,18 +658,24 @@ void FormMqttServer::handleSubscribe(QTcpSocket *socket, const QByteArray &body)
             return;
         }
         quint8 requestedQos = static_cast<quint8>(body.at(pos++)) & 0x03;
+        if (requestedQos == 3) {
+            appendLog("[错误] SUBSCRIBE请求QoS=3非法，断开连接");
+            socket->disconnectFromHost();
+            return;
+        }
 
         QString filter = QString::fromUtf8(filterBytes);
-        // 简化实现：最多支持QoS1，QoS2降级为QoS1
-        quint8 granted = qMin<quint8>(requestedQos, 1);
+        quint8 granted = requestedQos; // 支持QoS0/1/2
 
-        if (!m_subscriptions[filter].contains(socket)) {
-            m_subscriptions[filter].append(socket);
+        QHash<QTcpSocket *, quint8> &subscribers = m_subscriptions[filter];
+        if (!subscribers.contains(socket)) {
+            m_clients[socket].topicFilters.append(filter); // 新过滤器才记录到会话
         }
-        m_clients[socket].topicFilters.append(filter);
+        subscribers.insert(socket, granted); // 重复订阅按新QoS替换
 
         grantedQos.append(granted);
         subscribed.append(QString("%1(QoS%2)").arg(filter).arg(granted));
+        newSubscriptions.append(qMakePair(filter, granted));
     }
 
     sendToClient(socket, MqttProtocol::makeSubAckPacket(packetId, grantedQos));
@@ -624,6 +685,20 @@ void FormMqttServer::handleSubscribe(QTcpSocket *socket, const QByteArray &body)
                   .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
                   .arg(clientId.isEmpty() ? "未知客户端" : clientId)
                   .arg(subscribed.join(", ")));
+
+    // 下发匹配的保留消息：retain标志置1，QoS取存储QoS与授权QoS的较小值
+    for (const auto &sub : newSubscriptions) {
+        for (auto it = m_retained.constBegin(); it != m_retained.constEnd(); ++it) {
+            if (MqttProtocol::topicMatches(sub.first, it.key())) {
+                sendPublishToSubscriber(socket, it.key(), it->payload,
+                                        qMin(it->qos, sub.second), true);
+                appendLog(QString("[%1] 向 %2 下发保留消息: %3")
+                              .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                              .arg(clientId.isEmpty() ? "未知客户端" : clientId)
+                              .arg(it.key()));
+            }
+        }
+    }
 }
 
 // 功能：处理UNSUBSCRIBE报文——移除订阅并回复UNSUBACK
@@ -647,8 +722,8 @@ void FormMqttServer::handleUnsubscribe(QTcpSocket *socket, const QByteArray &bod
         }
         QString filter = QString::fromUtf8(filterBytes);
 
-        QList<QTcpSocket *> &subscribers = m_subscriptions[filter];
-        subscribers.removeAll(socket);
+        QHash<QTcpSocket *, quint8> &subscribers = m_subscriptions[filter];
+        subscribers.remove(socket);
         if (subscribers.isEmpty()) {
             m_subscriptions.remove(filter);
         }
@@ -665,7 +740,7 @@ void FormMqttServer::handleUnsubscribe(QTcpSocket *socket, const QByteArray &bod
                   .arg(unsubscribed.join(", ")));
 }
 
-// 功能：客户端断开——清理会话与订阅
+// 功能：客户端断开——清理会话与订阅；异常断开时发布遗嘱
 void FormMqttServer::onClientDisconnected()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
@@ -673,7 +748,9 @@ void FormMqttServer::onClientDisconnected()
         return;
     }
 
-    QString clientId = m_clients.value(socket).clientId;
+    const MqttClientSession session = m_clients.value(socket); // 拷贝，removeClient后仍可用
+    const QString clientId = session.clientId;
+
     removeClient(socket);
     socket->deleteLater();
 
@@ -682,6 +759,29 @@ void FormMqttServer::onClientDisconnected()
                   .arg(clientId.isEmpty() ? "未完成CONNECT的连接" : clientId)
                   .arg(socket->peerAddress().toString())
                   .arg(socket->peerPort()));
+
+    // 遗嘱发布：未收到DISCONNECT报文的断开均视为异常断开，由Broker代为发布遗嘱
+    if (!session.willFlag || session.cleanDisconnect) {
+        return;
+    }
+    if (session.will.topic.isEmpty()) {
+        appendLog("[提示] 遗嘱主题为空，跳过发布");
+        return;
+    }
+
+    appendLog(QString("[%1] 客户端 %2 异常断开，发布遗嘱: %3 (QoS%4, 保留=%5)")
+                  .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                  .arg(clientId)
+                  .arg(session.will.topic)
+                  .arg(session.will.qos)
+                  .arg(session.will.retain ? "是" : "否"));
+
+    // 遗嘱保留：retain=1时写入保留消息存储（空消息=清除）
+    if (session.will.retain) {
+        applyRetainedMessage(session.will.topic, session.will.message, session.will.qos);
+    }
+    // 遗嘱按普通发布投递，retain位与Will Retain一致
+    deliverMessage(session.will.topic, session.will.message, session.will.qos, session.will.retain);
 }
 
 // 功能：发送报文到指定客户端
@@ -692,35 +792,188 @@ void FormMqttServer::sendToClient(QTcpSocket *socket, const QByteArray &packet)
     }
 }
 
-// 功能：将消息路由给所有匹配主题过滤器的订阅者（支持+和#通配符）
-void FormMqttServer::deliverMessage(const QString &topic, const QByteArray &payload)
+// 功能：将消息路由给所有匹配主题过滤器的订阅者（支持+和#通配符，按授权QoS投递）
+void FormMqttServer::deliverMessage(const QString &topic, const QByteArray &payload,
+                                    quint8 incomingQos, bool retain)
 {
-    int deliveredCount = 0;
-
-    // 主题匹配遍历所有订阅
-    QList<QTcpSocket *> targets;
+    // 收集去重后的目标订阅者；同一客户端多个过滤器匹配时取最高授权QoS
+    QHash<QTcpSocket *, quint8> targets;
     for (auto it = m_subscriptions.constBegin(); it != m_subscriptions.constEnd(); ++it) {
         if (MqttProtocol::topicMatches(it.key(), topic)) {
-            for (QTcpSocket *socket : it.value()) {
-                if (!targets.contains(socket)) { // 同一客户端多个过滤器匹配时只发一次
-                    targets.append(socket);
-                }
+            for (auto sub = it.value().constBegin(); sub != it.value().constEnd(); ++sub) {
+                quint8 &granted = targets[sub.key()];
+                granted = qMax(granted, sub.value());
             }
         }
     }
 
-    for (QTcpSocket *socket : targets) {
-        // 按订阅允许的QoS转发（简化实现：统一按QoS0转发）
-        sendToClient(socket, MqttProtocol::makePublishPacket(topic, payload, 0));
-        ++deliveredCount;
+    for (auto it = targets.constBegin(); it != targets.constEnd(); ++it) {
+        // 实际投递QoS = min(入站QoS, 订阅者授权QoS)
+        sendPublishToSubscriber(it.key(), topic, payload, qMin(incomingQos, it.value()), retain);
     }
 
-    if (deliveredCount > 0) {
+    if (!targets.isEmpty()) {
         appendLog(QString("[%1] 消息已转发给 %2 个订阅者")
                       .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
-                      .arg(deliveredCount));
+                      .arg(targets.size()));
     } else {
         appendLog("[提示] 当前没有客户端订阅该主题");
+    }
+}
+
+// 功能：向单个订阅者投递PUBLISH；QoS1/2进入出站确认与重传流程
+void FormMqttServer::sendPublishToSubscriber(QTcpSocket *socket, const QString &topic,
+                                             const QByteArray &payload, quint8 qos, bool retain)
+{
+    if (socket->state() != QAbstractSocket::ConnectedState) {
+        return;
+    }
+
+    quint16 packetId = 0;
+    QByteArray packet;
+    if (qos == 0) {
+        packet = MqttProtocol::makePublishPacket(topic, payload, 0, retain);
+    } else {
+        packetId = allocateOutgoingPacketId(socket);
+        packet = MqttProtocol::makePublishPacket(topic, payload, qos, retain, packetId);
+    }
+
+    sendToClient(socket, packet);
+
+    if (qos > 0) {
+        MqttOutgoingDelivery delivery;
+        delivery.packet = packet;
+        delivery.state = (qos == 1) ? 0 : 1; // 0=等待PUBACK, 1=等待PUBREC
+        delivery.nextRetryMs = m_retryClock.elapsed() + kRetryIntervalMs;
+        m_outgoing[socket].insert(packetId, delivery);
+    }
+}
+
+// 功能：分配出站报文标识符（1~65535循环，跳过在途标识符）
+quint16 FormMqttServer::allocateOutgoingPacketId(QTcpSocket *socket)
+{
+    quint16 &next = m_nextPacketId[socket];
+    if (next == 0) {
+        next = 1;
+    }
+    quint16 id = next++;
+    if (next == 0) {
+        next = 1; // 回绕，0保留
+    }
+    // 与在途报文冲突时继续分配（理论上循环一圈才可能冲突）
+    while (m_outgoing.value(socket).contains(id)) {
+        id = next++;
+        if (next == 0) {
+            next = 1;
+        }
+    }
+    return id;
+}
+
+// 功能：处理出站QoS流程的确认报文（PUBACK/PUBREC/PUBCOMP）
+void FormMqttServer::handleOutgoingAck(QTcpSocket *socket, quint8 packetType, const QByteArray &body)
+{
+    if (body.size() < 2) {
+        return;
+    }
+    const quint16 packetId = (static_cast<quint8>(body.at(0)) << 8) |
+                             static_cast<quint8>(body.at(1));
+
+    auto socketIt = m_outgoing.find(socket);
+    if (socketIt == m_outgoing.end()) {
+        return;
+    }
+    auto it = socketIt->find(packetId);
+    if (it == socketIt->end()) {
+        return; // 未知报文标识符（重复确认），忽略
+    }
+
+    if (packetType == MqttProtocol::PubAck) {
+        if (it->state == 0) {
+            socketIt->erase(it); // QoS1投递完成
+        }
+    } else if (packetType == MqttProtocol::PubRec) {
+        if (it->state == 1) {
+            // QoS2第二阶段：发送PUBREL并等待PUBCOMP
+            it->state = 2;
+            it->retries = 0;
+            it->packet = MqttProtocol::makePubRelPacket(packetId);
+            it->nextRetryMs = m_retryClock.elapsed() + kRetryIntervalMs;
+            sendToClient(socket, it->packet);
+        }
+    } else if (packetType == MqttProtocol::PubComp) {
+        if (it->state == 2) {
+            socketIt->erase(it); // QoS2投递完成
+        }
+    }
+}
+
+// 功能：重传出站超时未确认的QoS1/QoS2报文，超出重传上限则放弃
+void FormMqttServer::retryPendingDeliveries()
+{
+    const qint64 now = m_retryClock.elapsed();
+    for (auto socketIt = m_outgoing.begin(); socketIt != m_outgoing.end();) {
+        QTcpSocket *socket = socketIt.key();
+        for (auto it = socketIt.value().begin(); it != socketIt.value().end();) {
+            if (now >= it->nextRetryMs) {
+                if (it->retries >= kMaxRetries) {
+                    appendLog(QString("[%1] 出站QoS报文重传超限，放弃投递 (报文标识符%2)")
+                                  .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                                  .arg(it.key()));
+                    it = socketIt.value().erase(it);
+                    continue;
+                }
+                ++it->retries;
+                it->nextRetryMs = now + kRetryIntervalMs;
+                sendToClient(socket, it->packet);
+            }
+            ++it;
+        }
+        if (socketIt.value().isEmpty()) {
+            socketIt = m_outgoing.erase(socketIt);
+        } else {
+            ++socketIt;
+        }
+    }
+}
+
+// 功能：保活超时检测——超过1.5倍keepalive无任何报文则视为异常断开（MQTT-3.1.2-24）
+void FormMqttServer::checkKeepAliveTimeouts()
+{
+    const qint64 now = m_retryClock.elapsed();
+    const QList<QTcpSocket *> sockets = m_clients.keys(); // 拷贝，避免迭代中修改
+    for (QTcpSocket *socket : sockets) {
+        const MqttClientSession &session = m_clients.value(socket);
+        if (session.keepAliveSeconds == 0 || session.clientId.isEmpty()) {
+            continue; // 未启用保活，或尚未完成CONNECT的连接不检查
+        }
+        if (now - session.lastActivityMs > session.keepAliveSeconds * 1500LL) {
+            appendLog(QString("[%1] 客户端 %2 保活超时（%3秒无报文），按异常断开处理")
+                          .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                          .arg(session.clientId)
+                          .arg(session.keepAliveSeconds));
+            socket->abort(); // 触发disconnected信号 → onClientDisconnected发布遗嘱
+        }
+    }
+}
+
+// 功能：处理保留消息存储（retain=1时存储，空载荷清除）
+void FormMqttServer::applyRetainedMessage(const QString &topic, const QByteArray &payload, quint8 qos)
+{
+    if (payload.isEmpty()) {
+        m_retained.remove(topic);
+        appendLog(QString("[%1] 保留消息已清除: %2")
+                      .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                      .arg(topic));
+    } else {
+        MqttRetainedMessage retained;
+        retained.payload = payload;
+        retained.qos = qos;
+        m_retained.insert(topic, retained);
+        appendLog(QString("[%1] 保留消息已存储: %2 (QoS%3)")
+                      .arg(QDateTime::currentDateTime().toString("hh:mm:ss"))
+                      .arg(topic)
+                      .arg(qos));
     }
 }
 
@@ -736,12 +989,17 @@ void FormMqttServer::removeClient(QTcpSocket *socket)
     m_recvBuffers.remove(socket);
 
     for (const QString &filter : session.topicFilters) {
-        QList<QTcpSocket *> &subscribers = m_subscriptions[filter];
-        subscribers.removeAll(socket);
+        QHash<QTcpSocket *, quint8> &subscribers = m_subscriptions[filter];
+        subscribers.remove(socket);
         if (subscribers.isEmpty()) {
             m_subscriptions.remove(filter);
         }
     }
+
+    // 清理该连接的QoS流程状态（入站暂存、出站待确认、报文标识符分配）
+    m_qos2Inbound.remove(socket);
+    m_outgoing.remove(socket);
+    m_nextPacketId.remove(socket);
 }
 
 // 功能：追加日志并自动滚动到底部

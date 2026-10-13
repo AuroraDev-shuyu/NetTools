@@ -116,7 +116,7 @@
       <normaloff>:/new/prefix1/images/udpserver.ico</normaloff>:/new/prefix1/images/udpserver.ico</iconset>
     </attribute>
     <attribute name="title">
-     <string>QUIC服务器</string>
+     <string>POP3客户端</string>
     </attribute>
    </widget>
    <widget class="FormQuicServer" name="tab_QUICServer">
@@ -125,7 +125,7 @@
       <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
     </attribute>
     <attribute name="title">
-     <string>QUIC客户端</string>
+     <string>QUIC服务器</string>
     </attribute>
    </widget>
    <widget class="FormQuicClient" name="tab_QUICClient">
@@ -134,7 +134,7 @@
       <normaloff>:/new/prefix1/images/clientlogo2.ico</normaloff>:/new/prefix1/images/clientlogo2.ico</iconset>
     </attribute>
     <attribute name="title">
-     <string>POP3客户端</string>
+     <string>QUIC客户端</string>
     </attribute>
    </widget>
   </widget>
