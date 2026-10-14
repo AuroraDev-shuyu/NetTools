@@ -36,6 +36,7 @@ SOURCES += \
     mainwidget.cpp \
     mqttprotocol.cpp \
     network.cpp \
+    pop3protocol.cpp \
     quicclient.cpp \
     quicserver.cpp
 
@@ -61,6 +62,7 @@ HEADERS += \
     mainwidget.h \
     mqttprotocol.h \
     network.h \
+    pop3protocol.h \
     quiccommon.h \
     quicclient.h \
     quicserver.h

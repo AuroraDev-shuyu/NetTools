@@ -6,6 +6,7 @@
 #include "formtcpclient.h"
 #include "formudpserver.h"
 #include "formudpclient.h"
+#include "formpop3client.h"
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWidget;

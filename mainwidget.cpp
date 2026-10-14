@@ -53,6 +53,11 @@ void MainWidget::closeEvent(QCloseEvent *event)
         ui->tab_MQTTClient->saveLog();
     }
 
+    // 保存POP3客户端日志
+    if(ui->tab_POP3Client){
+        ui->tab_POP3Client->saveLog();
+    }
+
     // 保存QUIC服务器日志
     if(ui->tab_QUICServer){
         ui->tab_QUICServer->saveLog();
