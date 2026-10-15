@@ -137,6 +137,15 @@
      <string>QUIC客户端</string>
     </attribute>
    </widget>
+   <widget class="FormAvAnalyzer" name="tab_AvAnalyzer">
+    <attribute name="icon">
+     <iconset resource="images.qrc">
+      <normaloff>:/new/prefix1/images/udpserver.ico</normaloff>:/new/prefix1/images/udpserver.ico</iconset>
+    </attribute>
+    <attribute name="title">
+     <string>音视频解析</string>
+    </attribute>
+   </widget>
   </widget>
  </widget>
  <customwidgets>
@@ -210,6 +219,12 @@
    <class>FormPop3Client</class>
    <extends>QWidget</extends>
    <header location="global">formpop3client.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormAvAnalyzer</class>
+   <extends>QWidget</extends>
+   <header location="global">formavanalyzer.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

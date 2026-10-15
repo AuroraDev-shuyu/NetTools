@@ -68,6 +68,15 @@ void MainWidget::closeEvent(QCloseEvent *event)
         ui->tab_QUICClient->saveLog();
     }
 
+    // 保存音视频解析日志
+    if(ui->tab_AvAnalyzer){
+        try{
+            ui->tab_AvAnalyzer->saveLog();
+        }catch(const std::exception& e){
+            qWarning()<<"保存音视频解析日志失败:"<<e.what();
+        }
+    }
+
     // 保存数据转换工具日志
     if(ui->tab_DataExchange){
         try{

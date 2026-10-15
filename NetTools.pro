@@ -17,9 +17,11 @@ CONFIG += c++17
 SOURCES += \
     dataconverter.cpp \
     errorhandler.cpp \
+    formavanalyzer.cpp \
     formchilddataconversion.cpp \
     formchilddatavalidation.cpp \
     formdataprocessor.cpp \
+    formh264analyzer.cpp \
     formhttpclient.cpp \
     formhttpserver.cpp \
     formmqttclient.cpp \
@@ -27,10 +29,12 @@ SOURCES += \
     formpop3client.cpp \
     formquicclient.cpp \
     formquicserver.cpp \
+    formrtpanalyzer.cpp \
     formtcpclient.cpp \
     formtcpserver.cpp \
     formudpclient.cpp \
     formudpserver.cpp \
+    h264parser.cpp \
     inputvalidator.cpp \
     main.cpp \
     mainwidget.cpp \
@@ -38,15 +42,17 @@ SOURCES += \
     network.cpp \
     pop3protocol.cpp \
     quicclient.cpp \
-    quicserver.cpp
+    quicserver.cpp \
+    rtpprotocol.cpp
 
 HEADERS += \
     dataconverter.h \
     errorhandler.h \
-    formchilddataconversion.h \
+    formavanalyzer.h \
     formchilddataconversion.h \
     formchilddatavalidation.h \
     formdataprocessor.h \
+    formh264analyzer.h \
     formhttpclient.h \
     formhttpserver.h \
     formmqttclient.h \
@@ -54,10 +60,13 @@ HEADERS += \
     formpop3client.h \
     formquicclient.h \
     formquicserver.h \
+    formrtpanalyzer.h \
     formtcpclient.h \
     formtcpserver.h \
     formudpclient.h \
     formudpserver.h \
+    h264parser.h \
+    hexdump.h \
     inputvalidator.h \
     mainwidget.h \
     mqttprotocol.h \
@@ -65,12 +74,15 @@ HEADERS += \
     pop3protocol.h \
     quiccommon.h \
     quicclient.h \
-    quicserver.h
+    quicserver.h \
+    rtpprotocol.h
 
 FORMS += \
+    formavanalyzer.ui \
     formchilddataconversion.ui \
     formchilddatavalidation.ui \
     formdataprocessor.ui \
+    formh264analyzer.ui \
     formhttpclient.ui \
     formhttpserver.ui \
     formmqttclient.ui \
@@ -78,6 +90,7 @@ FORMS += \
     formpop3client.ui \
     formquicclient.ui \
     formquicserver.ui \
+    formrtpanalyzer.ui \
     formtcpclient.ui \
     formtcpserver.ui \
     formudpclient.ui \

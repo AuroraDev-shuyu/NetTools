@@ -24,9 +24,11 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Network Concurrent HttpServer WebSo
 qt_add_executable(NetTools WIN32
     dataconverter.cpp
     errorhandler.cpp
+    formavanalyzer.cpp
     formchilddataconversion.cpp
     formchilddatavalidation.cpp
     formdataprocessor.cpp
+    formh264analyzer.cpp
     formhttpclient.cpp
     formhttpserver.cpp
     formmqttclient.cpp
@@ -34,10 +36,12 @@ qt_add_executable(NetTools WIN32
     formpop3client.cpp
     formquicclient.cpp
     formquicserver.cpp
+    formrtpanalyzer.cpp
     formtcpclient.cpp
     formtcpserver.cpp
     formudpclient.cpp
     formudpserver.cpp
+    h264parser.cpp
     inputvalidator.cpp
     main.cpp
     mainwidget.cpp
@@ -46,12 +50,15 @@ qt_add_executable(NetTools WIN32
     pop3protocol.cpp
     quicclient.cpp
     quicserver.cpp
+    rtpprotocol.cpp
 
     dataconverter.h
     errorhandler.h
+    formavanalyzer.h
     formchilddataconversion.h
     formchilddatavalidation.h
     formdataprocessor.h
+    formh264analyzer.h
     formhttpclient.h
     formhttpserver.h
     formmqttclient.h
@@ -59,10 +66,13 @@ qt_add_executable(NetTools WIN32
     formpop3client.h
     formquicclient.h
     formquicserver.h
+    formrtpanalyzer.h
     formtcpclient.h
     formtcpserver.h
     formudpclient.h
     formudpserver.h
+    h264parser.h
+    hexdump.h
     inputvalidator.h
     mainwidget.h
     mqttprotocol.h
@@ -71,10 +81,13 @@ qt_add_executable(NetTools WIN32
     quiccommon.h
     quicclient.h
     quicserver.h
+    rtpprotocol.h
 
+    formavanalyzer.ui
     formchilddataconversion.ui
     formchilddatavalidation.ui
     formdataprocessor.ui
+    formh264analyzer.ui
     formhttpclient.ui
     formhttpserver.ui
     formmqttclient.ui
@@ -82,6 +95,7 @@ qt_add_executable(NetTools WIN32
     formpop3client.ui
     formquicclient.ui
     formquicserver.ui
+    formrtpanalyzer.ui
     formtcpclient.ui
     formtcpserver.ui
     formudpclient.ui
