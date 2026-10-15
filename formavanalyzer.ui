@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>FormAvAnalyzer</class>
+ <widget class="QWidget" name="FormAvAnalyzer">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>567</width>
+    <height>438</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <widget class="QTabWidget" name="tabWidget_AvAnalyzer">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>567</width>
+     <height>438</height>
+    </rect>
+   </property>
+   <property name="currentIndex">
+    <number>0</number>
+   </property>
+   <widget class="FormRtpAnalyzer" name="tab_RtpAnalyzer">
+    <attribute name="title">
+     <string>RTP/RTCP解析</string>
+    </attribute>
+   </widget>
+   <widget class="FormH264Analyzer" name="tab_H264Analyzer">
+    <attribute name="title">
+     <string>H.264码流分析</string>
+    </attribute>
+   </widget>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>FormRtpAnalyzer</class>
+   <extends>QWidget</extends>
+   <header location="global">formrtpanalyzer.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FormH264Analyzer</class>
+   <extends>QWidget</extends>
+   <header location="global">formh264analyzer.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
